@@ -1,0 +1,24 @@
+var geometry = ee.Geometry.Point([-86.532, 39.1668]);
+Map.centerObject(geometry, 9);
+var s2 = ee.ImageCollection('COPERNICUS/S2_HARMONIZED');
+
+var image2019 = s2.filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 30))
+  .filter(ee.Filter.date('2019-01-01', '2020-01-01'))
+  .filter(ee.Filter.bounds(geometry))
+  .median();
+
+var image2020 = s2.filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 30))
+  .filter(ee.Filter.date('2020-01-01', '2021-01-01'))
+  .filter(ee.Filter.bounds(geometry))
+  .median();
+
+var rgbVis = {
+  min: 0.0,
+  max: 3000,
+  bands: ['B4', 'B3', 'B2'], 
+};
+
+Map.addLayer(image2019, rgbVis, '2019');
+Map.addLayer(image2020, rgbVis, '2020');
+
+// Rahul Devajji

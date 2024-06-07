@@ -1,0 +1,14 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var ghs_urban_centers = ee.FeatureCollection("users/rdevajji/ghs_urban_centers");
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var america = ee.FeatureCollection('users/ujavalgandhi/e2e/ghs_urban_centers')
+                .filter(ee.Filter.eq('CTR_MN_ISO', 'USA'));
+
+var large_UC = america.filter(ee.Filter.gt('P15', 1000000));
+
+Map.addLayer(america, {color: 'grey'}, 'America');
+Map.centerObject(america);
+
+Map.addLayer(large_UC, {color: 'red'}, 'Large UC');
+
+// Rahul Devajji

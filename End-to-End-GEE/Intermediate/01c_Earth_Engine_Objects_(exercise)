@@ -1,0 +1,15 @@
+var s2 = ee.ImageCollection('COPERNICUS/S2_HARMONIZED');
+var geometry = ee.Geometry.Point([77.60412933051538, 12.952912912328241]);
+
+var now = Date.now();
+var now = ee.Date(now);
+var monthAgo = now.advance(-1, 'month');
+
+var filtered = s2.filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 30))
+  .filter(ee.Filter.bounds(geometry))
+  // .filter(ee.Filter.date(monthAgo, now));
+  .filterDate(monthAgo, now);
+
+print(filtered);
+
+// Rahul Devajji

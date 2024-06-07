@@ -1,0 +1,28 @@
+var s2 = ee.ImageCollection('COPERNICUS/S2_HARMONIZED');
+var urban = ee.FeatureCollection('users/ujavalgandhi/e2e/ghs_urban_centers');
+
+var fid = ee.Filter.eq('fid', 627);
+var bloomington = ee.Filter.eq('UC_NM_MN', 'Bloomington');
+var bloomington_IN = ee.Filter.and(bloomington, fid);
+
+var filtered = urban.filter(bloomington_IN);
+Map.addLayer(filtered, {color: 'red'}, 'Bloomington, IN');
+
+var geometry = filtered.geometry();
+
+var rgbVis = {
+  min: 0.0,
+  max: 3000,
+  bands: ['B4', 'B3', 'B2'], 
+};
+var filtered = s2.filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 30))
+  .filter(ee.Filter.date('2019-01-01', '2020-01-01'))
+  .filter(ee.Filter.bounds(geometry));
+
+var image = filtered.median(); 
+
+var clipped = image.clip(geometry);
+
+Map.addLayer(clipped, rgbVis, 'Clipped');
+Map.centerObject(clipped, 12);
+// Rahul Devajji

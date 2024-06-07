@@ -1,0 +1,38 @@
+var geometry = ee.Geometry.Polygon([[
+  [82.60642647743225, 27.16350437805251],
+  [82.60984897613525, 27.1618529901377],
+  [82.61088967323303, 27.163695288375266],
+  [82.60757446289062, 27.16517483230927]
+]]);
+          
+var rgbVis = {min: 0.0, max: 3000, bands: ['B4', 'B3', 'B2']};
+var image = ee.Image('COPERNICUS/S2_HARMONIZED/20190223T050811_20190223T051829_T44RPR');
+Map.addLayer(image, rgbVis, 'Image');
+Map.addLayer(geometry, {color: 'red'}, 'Farm');
+Map.centerObject(geometry);
+
+var ndvi = image.normalizedDifference(['B8', 'B4']).rename('ndvi');
+image = image.addBands(ndvi);
+
+var reducers = ee.Reducer.mean().combine({
+  reducer2: ee.Reducer.minMax(),
+  sharedInputs: true
+}).combine({
+  reducer2: ee.Reducer.median(),
+  sharedInputs: true
+}).combine({
+  reducer2: ee.Reducer.percentile([25, 75]),
+  sharedInputs: true
+});
+
+var reduced = image.select('ndvi').reduceRegion({
+  reducer: reducers,
+  geometry: geometry,
+  scale: 10,
+  maxPixels: 1e10
+});
+
+print(reduced.getNumber('ndvi_mean'));
+print(reduced);
+
+// Rahul Devajji

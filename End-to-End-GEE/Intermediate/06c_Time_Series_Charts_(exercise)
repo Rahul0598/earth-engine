@@ -1,0 +1,65 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var geometry = /* color: #d63000 */ee.Geometry.Polygon(
+        [[[-86.29934321426336, 39.4347562295314],
+          [-86.29839920563501, 39.3941794579647],
+          [-86.22107464372698, 39.39782684038366],
+          [-86.2223630541594, 39.436148150821346]]]);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var s2 = ee.ImageCollection('COPERNICUS/S2_HARMONIZED');
+
+Map.centerObject(geometry)
+var rgbVis = {min: 0.0, max: 3000, bands: ['B4', 'B3', 'B2']};
+
+var filtered = s2
+  .filter(ee.Filter.date('2017-01-01', '2020-01-01'))
+  .filter(ee.Filter.bounds(geometry))
+
+// Load the Cloud Score+ collection
+var csPlus = ee.ImageCollection('GOOGLE/CLOUD_SCORE_PLUS/V1/S2_HARMONIZED');
+var csPlusBands = csPlus.first().bandNames();
+
+// We need to add Cloud Score + bands to each Sentinel-2
+// image in the collection
+// This is done using the linkCollection() function
+var filteredS2WithCs = filtered.linkCollection(csPlus, csPlusBands);
+
+// Function to mask pixels with low CS+ QA scores.
+function maskLowQA(image) {
+  var qaBand = 'cs';
+  var clearThreshold = 0.5;
+  var mask = image.select(qaBand).gte(clearThreshold);
+  return image.updateMask(mask);
+}
+
+
+var filteredMasked = filteredS2WithCs
+  .map(maskLowQA);
+// Write a function that computes NDVI for an image and adds it as a band
+function addNDVI(image) {
+  var ndvi = image.normalizedDifference(['B8', 'B4']).rename('ndvi');
+  return image.addBands(ndvi);
+}
+
+// Map the function over the collection
+var withNdvi = filteredMasked.map(addNDVI);
+
+
+// Display a time-series chart
+var chart = ui.Chart.image.series({
+  imageCollection: withNdvi.select('ndvi'),
+  region: geometry,
+  reducer: ee.Reducer.mean(),
+  scale: 10
+}).setOptions({
+      lineWidth: 1,
+      pointSize: 2,
+      title: 'NDVI Time Series',
+      interpolateNulls: true,
+      vAxis: {title: 'NDVI'},
+      hAxis: {title: '', format: 'YYYY-MMM'},
+      curveType: 'function'
+    })
+
+print(chart);
+
+// Rahul Devajji

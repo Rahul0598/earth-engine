@@ -1,0 +1,45 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var imageVisParam = {"opacity":1,"bands":["ndwi"],"min":-0.5448368996381759,"max":0.42907719910144804,"palette":["ffffd9","edf8b1","c7e9b4","7fcdbb","41b6c4","1d91c0","225ea8","253494","081d58"]};
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var s2 = ee.ImageCollection('COPERNICUS/S2_HARMONIZED');
+var admin1 = ee.FeatureCollection('FAO/GAUL_SIMPLIFIED_500m/2015/level1');
+    
+// Select an Admin1 region
+var filteredAdmin1 = admin1.filter(ee.Filter.eq('ADM1_NAME', 'Karnataka'));
+var geometry = filteredAdmin1.geometry();
+Map.centerObject(geometry, 9);
+
+var rgbVis = {min: 0.0, max: 3000, bands: ['B4', 'B3', 'B2']};
+
+var filteredS2 = s2.filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 30))
+  .filter(ee.Filter.date('2019-01-01', '2020-01-01'))
+  .filter(ee.Filter.bounds(geometry));
+
+var composite = filteredS2.median().clip(geometry);
+Map.addLayer(composite, rgbVis, 'Admin1 Composite');
+
+// This function calculates both NDVI and NDWI indices
+// and returns an image with 2 new bands added to the original image.
+function addIndices(image) {
+  var ndvi = image.normalizedDifference(['B8', 'B4']).rename('ndvi');
+  var ndwi = image.normalizedDifference(['B3', 'B8']).rename('ndwi');
+  return image.addBands(ndvi).addBands(ndwi);
+}
+
+// Map the function over the collection
+var withIndices = filteredS2.map(addIndices);
+
+// Composite
+var composite = withIndices.median();
+print(composite);
+
+var palettes = require('users/gena/packages:palettes');
+var palette = palettes.colorbrewer.YlGnBu[9];
+
+Map.addLayer(
+  composite.select('ndwi').clip(geometry),
+  imageVisParam,
+  'NDWI'
+);
+
+// Rahul Devajji

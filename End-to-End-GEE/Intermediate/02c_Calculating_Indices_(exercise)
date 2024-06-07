@@ -1,0 +1,47 @@
+var s2 = ee.ImageCollection('COPERNICUS/S2_HARMONIZED');
+var admin2 = ee.FeatureCollection('FAO/GAUL_SIMPLIFIED_500m/2015/level2');
+
+var indiana = ee.Filter.eq('ADM1_NAME', 'Indiana');
+var monroe = ee.Filter.eq('ADM2_NAME', 'Monroe');
+var filteredAdmin2 = admin2.filter(ee.Filter.and(indiana, monroe));
+var geometry = filteredAdmin2.geometry();
+Map.centerObject(geometry);
+
+var filteredS2 = s2.filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 30))
+  .filter(ee.Filter.date('2019-01-01', '2020-01-01'))
+  .filter(ee.Filter.bounds(geometry));
+
+var image = filteredS2.median(); 
+
+var rgbVis = {min: 0.0, max: 3000, bands: ['B4', 'B3', 'B2']};
+Map.addLayer(image.clip(geometry), rgbVis, 'RGB');
+
+var NDBI = image.normalizedDifference(['B11', 'B8']).rename("NDBI");
+image = image.addBands(NDBI);
+Map.addLayer(
+  image.select('NDBI').clip(geometry),
+  {palette: ['White', 'red'], min: -1, max: 1},
+  'NDBI'
+);
+
+var NDWI = image.normalizedDifference(['B3', 'B11']).rename("NDWI");
+image = image.addBands(NDWI);
+Map.addLayer(
+  image.select('NDWI').clip(geometry),
+  {palette: ['White', 'blue'], min: -1, max: 1},
+  'NDWI'
+);
+
+var SAVI = image
+            .expression("1.5 * ((NIR - RED)/ (NIR + RED))", {
+      'NIR': image.select("B8").multiply(0.0001),
+      'RED': image.select("B4").multiply(0.0001)
+    }).rename("SAVI");
+image = image.addBands(SAVI);
+Map.addLayer(
+  image.select('SAVI').clip(geometry),
+  {palette: ['White', 'green'], min: -1, max: 1},
+  'SAVI'
+);
+
+// Rahul Devajji

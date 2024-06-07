@@ -1,0 +1,66 @@
+var s2 = ee.ImageCollection('COPERNICUS/S2_HARMONIZED');
+var geometry = ee.Geometry.Point([-86.528, 39.1627]);
+    
+var filteredS2 = s2
+  .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 35))
+  .filter(ee.Filter.date('2019-01-01', '2020-01-01'))
+  .filter(ee.Filter.bounds(geometry));
+
+// Sort the collection and pick the most cloudy image
+var filteredS2Sorted = filteredS2.sort({
+  property: 'CLOUDY_PIXEL_PERCENTAGE',
+  ascending: false
+});
+
+var image = filteredS2Sorted.first();
+
+var rgbVis = {
+  min: 0.0,
+  max: 3000,
+  bands: ['B4', 'B3', 'B2'],
+};
+
+Map.centerObject(image);
+Map.addLayer(image, rgbVis, 'Full Image', false);
+
+// Write a function for Cloud masking
+function maskS2clouds(image) {
+  var qa = image.select('QA60');
+  var cloudBitMask = 1 << 10;
+  var cirrusBitMask = 1 << 11;
+  var mask = qa.bitwiseAnd(cloudBitMask).eq(0).and(
+             qa.bitwiseAnd(cirrusBitMask).eq(0));
+  return image.updateMask(mask)
+      .select('B.*')
+      .copyProperties(image, ['system:time_start']);
+}
+
+var imageMasked = ee.Image(maskS2clouds(image));
+Map.addLayer(imageMasked, rgbVis, 'Masked Image (QA60 Band)', false);
+
+// Use Google's Cloud Score+ Mask
+var csPlus = ee.ImageCollection('GOOGLE/CLOUD_SCORE_PLUS/V1/S2_HARMONIZED');
+var csPlusBands = csPlus.first().bandNames();
+
+// Link S2 and CS+ results.
+var imageWithCs = image.linkCollection(csPlus, csPlusBands);
+
+// Function to mask pixels with low CS+ QA scores.
+function maskLowQA(image) {
+  var qaBand = 'cs';
+  var clearThreshold = 0.65;
+  var mask = image.select(qaBand).gte(clearThreshold);
+  return image.updateMask(mask);
+}
+
+var imageMaskedCs = ee.Image(maskLowQA(imageWithCs));
+Map.addLayer(imageMaskedCs, rgbVis, 'Masked Image (Cloud Score+)');
+
+// Google CloudScore+ dataset provides state-of-the-art 
+// cloud masks for Sentinel-2 images.
+
+// It grades each image pixel on continuous scale between 0 and 1,
+// 0 = 'not clear' (occluded), 
+// 1 = 'clear' (unoccluded)
+
+// Rahul Devajji

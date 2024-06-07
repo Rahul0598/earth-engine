@@ -1,0 +1,21 @@
+var admin2 = ee.FeatureCollection('FAO/GAUL_SIMPLIFIED_500m/2015/level2')
+             .filter(ee.Filter.eq('ADM0_CODE', 259));
+Map.addLayer(admin2, {color: 'grey'}, 'USA');
+
+// var indiana_missouri = admin2.filter(ee.Filter.inList('ADM1_NAME', ['Indiana', 'Missouri']));
+var indiana = admin2.filter(ee.Filter.inList('ADM1_NAME', ['Indiana']));
+Map.addLayer(indiana, {color: 'red'}, 'Indiana');
+
+var monroe = indiana.filter(ee.Filter.eq('ADM2_NAME', 'Monroe'));
+Map.addLayer(monroe, {color: 'blue'}, 'monroe');
+
+var morgan = indiana.filter(ee.Filter.eq('ADM2_NAME', 'Morgan'));
+Map.addLayer(morgan, {color: 'green'}, 'morgan');
+
+var merged = monroe.merge(morgan);
+Map.addLayer(merged, {color: 'violet'}, 'merged');
+
+var merged_dissolved = merged.geometry().dissolve();
+Map.addLayer(merged_dissolved, {color: 'purple'}, 'dissolved');
+
+// Rahul Devajji
